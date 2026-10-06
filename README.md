@@ -2,19 +2,31 @@
 
 Steady is a personal workspace for daily habits, independent streaks, study progress, and measurable goals. Its central flow is intentionally small: open Today, check off what is done, optionally add a note, and move on.
 
-> **Project status:** Foundation in progress. The repository currently contains the workspace shell, a minimal Today landing page, MongoDB connection handling, and initial persistence models. Product flows described as planned below are not implemented yet.
+> **Project status:** Early MVP foundation. Authentication, category/entry/goal API slices, isolated calculation functions, and a responsive client prototype are present. The client still uses local demo state for most views and is not yet connected to the API. Several requested flows remain incomplete; see [Current limitations](#current-limitations).
 
 ## Why this project
 
 Consistency tools should make it easier to return to meaningful work. Steady is designed to make today's next action obvious while keeping long-term history, streaks, and goal pace available when useful.
 
+## Implemented so far
+
+- Monorepo workspace with React/Vite and Express/TypeScript apps
+- MongoDB connection lifecycle and initial Mongoose models/indexes
+- Registration, login, refresh, logout, and current-user endpoints using HTTP-only cookies
+- Per-user category CRUD with archive action and schedule shape validation
+- Dated daily entry upsert and history-range query API
+- Goal creation and additive progress-log API with metric targets and optional weights
+- Standalone schedule/streak and goal progress/pace calculations with focused unit tests
+- Responsive client prototype with Today check-in and notes stored in browser local storage
+- Overview, history, goals, achievements, and settings prototype routes
+
 ## Planned features
 
-- Configurable daily categories and schedules
-- Fast daily check-ins with optional notes
-- Timezone-aware streaks and a contribution-style history calendar
-- Measurable, multi-component goals with dated progress logs and pace guidance
-- Weekly review, achievements, data export, and responsive light/dark UI
+- Frontend-to-API authentication and persisted daily check-in flow
+- Fully accurate, timezone-aware streak/stat aggregation from persisted records
+- Goal status/required pace display from backend calculations
+- Real calendar inspection, weekly review, achievement evaluation, and export
+- Complete dark theme, category editor, goal forms, and mobile polish
 
 ## Tech stack
 
@@ -35,7 +47,7 @@ packages/
   shared/    Cross-app schemas and types
 ```
 
-The API will own validation, persistence, authorization, and business calculations. The web client will present API results and manage request state. The modular monolith keeps deployment and local development straightforward while preserving clear domain boundaries. The API now has a Mongo connection lifecycle and Mongoose schemas for users, categories, daily entries, goals, goal progress logs, and achievements. Feature routes and persistence workflows are not implemented yet.
+The API owns validation, persistence, authorization, and business calculations. The modular monolith keeps deployment and local development straightforward while preserving clear domain boundaries. The API currently exposes auth, category, entry, and goal route groups. Several aggregate/statistics and achievement endpoints still need implementation.
 
 ## Data model
 
@@ -54,15 +66,38 @@ Indexes include unique normalized user email, case-insensitive unique category n
 
 ### Daily records and streaks
 
-Daily entries will be separate records keyed by user, category, and the user's local date. A completed scheduled day advances a category's streak; a missed scheduled day breaks it. Unscheduled days have no effect. Frequency-based schedules such as three times per week will be measured against a weekly target rather than treated as consecutive-day streaks. Rest days should be scheduled ahead of time so retroactive skips cannot rewrite streak history.
+Daily entries are separate records keyed by user, category, and the user's local date. A completed scheduled day advances a category's streak; a missed scheduled day breaks it. Unscheduled days have no effect. Frequency-based schedules such as three times per week use a separate completed-week run calculation. A skipped day currently behaves as a non-completion in the calculation service. Entry creation/edit APIs do not yet enforce schedule-derived missed/not-scheduled status, and rest-day policy is not implemented.
 
 ### Goal progress
 
-Goals will track one or more measurable components. Each component contributes equally by default; optional weights must total 100%. Overall progress is derived from each component's capped completed-to-target ratio. The initial on-track comparison will use linear expected progress over the goal's date range, alongside required remaining units per day so the status is actionable.
+Goals track one or more measurable components in the persistence model. Each component contributes equally by default; optional weights must total 100%. Overall progress is derived from each component's capped completed-to-target ratio. The calculation service compares progress with linear expected progress over the goal's date range and estimates the remaining units per day. The API currently exposes progress percentages and completion, but does not yet expose the complete pace/status response on every goal query.
 
 ### Timezone
 
-Users will have an IANA timezone. Calendar dates and schedule boundaries will be derived in that timezone, while event timestamps remain timestamps. This avoids relying on the API server's local timezone for daily logic.
+Users have a timezone field, registration validates it as an IANA timezone, and entries retain a local date and timezone snapshot. The frontend formats dates locally. Server-side date derivation at midnight, schedule boundaries, and all historical timezone migration cases still need dedicated implementation and tests.
+
+## Authentication and security
+
+Passwords are hashed with bcryptjs. Access tokens expire after 15 minutes and refresh tokens after 30 days; both are HTTP-only cookies, with secure cookies in production and `SameSite=Lax`. Refresh tokens are stored as hashes and rotated on refresh. Authentication routes use an IP-based rate limit. Helmet, JSON size limits, and credentialed CORS are configured. Production secrets must be supplied through environment variables. CSRF protections beyond SameSite cookie behavior, account recovery, email verification, and session management across multiple devices are not implemented.
+
+## API routes
+
+- `POST /api/auth/register`, `/login`, `/refresh`, `/logout`; `GET /api/auth/me`
+- `GET/POST/PATCH/DELETE /api/categories`
+- `GET/PUT /api/entries` (PUT upserts a user/category/local-date entry)
+- `GET/POST /api/goals`; `POST /api/goals/:id/progress`
+- `GET /api/health`
+
+API handlers validate client input with Zod and scope records by authenticated user. Calculated values are derived from progress logs instead of treating a mutable total as the only history.
+
+## Current limitations
+
+- Frontend screens are prototypes: most data is static or stored in local storage and is not synchronized with MongoDB.
+- History heatmap values are illustrative placeholders, not API-derived history.
+- Goal cards and achievement states are illustrative; goal creation/edit forms, pace API integration, and achievement unlocking are incomplete.
+- There is no seed command, daily journal persistence, data export/import, weekly review, search, or fully developed personal records.
+- Integration tests, authentication tests, database-backed concurrency tests, and broad timezone boundary tests remain to be added.
+- No production deployment configuration or deployment walkthrough has been verified.
 
 ## Local development
 
@@ -74,7 +109,7 @@ cp apps/api/.env.example apps/api/.env
 npm run dev
 ```
 
-The web shell runs at `http://localhost:5173`; the API health endpoint is at `http://localhost:4000/api/health`. The API connects to the configured MongoDB URI before it begins listening and disconnects during graceful shutdown. A local MongoDB instance or hosted MongoDB URI is required to start the API.
+The web app runs at `http://localhost:5173`; the API health endpoint is at `http://localhost:4000/api/health`. The API connects to the configured MongoDB URI before it begins listening and disconnects during graceful shutdown. A local MongoDB instance or hosted MongoDB URI is required to start the API.
 
 ## Environment variables
 
@@ -82,7 +117,7 @@ The API example file is [`apps/api/.env.example`](apps/api/.env.example). It doc
 
 ## Verification
 
-Foundation checks are workspace TypeScript checks and production builds. Domain and API tests will be introduced alongside their implementation steps. In the current environment, dependency installation did not complete, so those commands have not yet been verified successfully.
+Run `npm test`, `npm run typecheck`, and `npm run build`. Current automated coverage is focused on seven streak and goal calculation cases; API and database integration coverage is still needed.
 
 ## Screenshots
 

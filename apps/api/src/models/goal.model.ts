@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, models, type Model } from "mongoose";
 
 const metricSchema = new Schema({
   key: { type: String, required: true, trim: true, maxlength: 40 },
@@ -28,4 +28,4 @@ const goalSchema = new Schema({
 goalSchema.index({ userId: 1, status: 1, targetDate: 1 });
 goalSchema.index({ userId: 1, categoryId: 1, status: 1 });
 
-export const Goal = models.Goal ?? model("Goal", goalSchema);
+export const Goal = (models.Goal ?? model("Goal", goalSchema)) as Model<any>;

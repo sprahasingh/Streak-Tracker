@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, models, type Model } from "mongoose";
 
 const achievementSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -10,4 +10,4 @@ const achievementSchema = new Schema({
 achievementSchema.index({ userId: 1, key: 1 }, { unique: true });
 achievementSchema.index({ userId: 1, unlockedAt: -1 });
 
-export const Achievement = models.Achievement ?? model("Achievement", achievementSchema);
+export const Achievement = (models.Achievement ?? model("Achievement", achievementSchema)) as Model<any>;

@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, models, type Model } from "mongoose";
 
 const scheduleSchema = new Schema({
   kind: { type: String, enum: ["daily", "weekdays", "selected-days", "times-per-week"], required: true },
@@ -20,4 +20,4 @@ const categorySchema = new Schema({
 categorySchema.index({ userId: 1, name: 1 }, { unique: true, collation: { locale: "en", strength: 2 } });
 categorySchema.index({ userId: 1, archivedAt: 1, sortOrder: 1 });
 
-export const Category = models.Category ?? model("Category", categorySchema);
+export const Category = (models.Category ?? model("Category", categorySchema)) as Model<any>;
