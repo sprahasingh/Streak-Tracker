@@ -1,0 +1,16 @@
+{
+  "name": "consistency-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal consistency, streak, study progress, and goal tracking.",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev -w @consistency-tracker/api\" \"npm run dev -w @consistency-tracker/web\"",
+    "build": "npm run build -w @consistency-tracker/shared && npm run build -w @consistency-tracker/api && npm run build -w @consistency-tracker/web",
+    "typecheck": "npm run typecheck -w @consistency-tracker/shared && npm run typecheck -w @consistency-tracker/api && npm run typecheck -w @consistency-tracker/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.3"
+  }
+}
