@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, models, type Model } from "mongoose";
 
 const dailyEntrySchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -13,4 +13,4 @@ dailyEntrySchema.index({ userId: 1, categoryId: 1, localDate: 1 }, { unique: tru
 dailyEntrySchema.index({ userId: 1, localDate: -1 });
 dailyEntrySchema.index({ userId: 1, categoryId: 1, localDate: -1 });
 
-export const DailyEntry = models.DailyEntry ?? model("DailyEntry", dailyEntrySchema);
+export const DailyEntry = (models.DailyEntry ?? model("DailyEntry", dailyEntrySchema)) as Model<any>;

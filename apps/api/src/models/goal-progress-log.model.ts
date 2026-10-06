@@ -1,4 +1,4 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, models, type Model } from "mongoose";
 
 const metricDeltaSchema = new Schema({
   metricId: { type: Schema.Types.ObjectId, required: true },
@@ -15,4 +15,4 @@ const goalProgressLogSchema = new Schema({
 
 goalProgressLogSchema.index({ userId: 1, goalId: 1, localDate: -1 });
 
-export const GoalProgressLog = models.GoalProgressLog ?? model("GoalProgressLog", goalProgressLogSchema);
+export const GoalProgressLog = (models.GoalProgressLog ?? model("GoalProgressLog", goalProgressLogSchema)) as Model<any>;
