@@ -2,7 +2,7 @@
 
 Steady is a personal workspace for daily habits, independent streaks, study progress, and measurable goals. Its central flow is intentionally small: open Today, check off what is done, optionally add a note, and move on.
 
-> **Project status:** Early MVP foundation. Authentication, category/entry/goal API slices, isolated calculation functions, and a responsive client prototype are present. The client still uses local demo state for most views and is not yet connected to the API. Several requested flows remain incomplete; see [Current limitations](#current-limitations).
+> **Project status:** Early MVP. Authentication, daily tracking, statistics, goals, achievements, and export have API-backed paths; the Today, Overview, History, Goals, and Awards screens use those APIs. Several requested flows remain incomplete; see [Current limitations](#current-limitations).
 
 ## Why this project
 
@@ -17,16 +17,17 @@ Consistency tools should make it easier to return to meaningful work. Steady is 
 - Dated daily entry upsert and history-range query API
 - Goal creation and additive progress-log API with metric targets and optional weights
 - Standalone schedule/streak and goal progress/pace calculations with focused unit tests
-- Responsive client prototype with Today check-in and notes stored in browser local storage
-- Overview, history, goals, achievements, and settings prototype routes
+- Responsive client with cookie session gate and API-backed Today check-ins and category notes
+- API-backed overview, 90-day history heatmap, goal progress, and achievement views
+- JSON backup and CSV daily-entry export
 
 ## Planned features
 
-- Frontend-to-API authentication and persisted daily check-in flow
-- Fully accurate, timezone-aware streak/stat aggregation from persisted records
-- Goal status/required pace display from backend calculations
-- Real calendar inspection, weekly review, achievement evaluation, and export
-- Complete dark theme, category editor, goal forms, and mobile polish
+- Per-category calendar inspection and historical entry editing
+- Weekly review generation and more detailed personal records
+- Full schedule editor, category ordering UI, and configurable streak freezes
+- Complete dark theme and profile/timezone editing
+- Goal update/edit and milestone management; goal creation currently uses compact prompts
 
 ## Tech stack
 
@@ -47,7 +48,7 @@ packages/
   shared/    Cross-app schemas and types
 ```
 
-The API owns validation, persistence, authorization, and business calculations. The modular monolith keeps deployment and local development straightforward while preserving clear domain boundaries. The API currently exposes auth, category, entry, and goal route groups. Several aggregate/statistics and achievement endpoints still need implementation.
+The API owns validation, persistence, authorization, and business calculations. The modular monolith keeps deployment and local development straightforward while preserving clear domain boundaries. The API exposes auth, category, entry, goal, statistics, achievement, and export route groups.
 
 ## Data model
 
@@ -70,7 +71,7 @@ Daily entries are separate records keyed by user, category, and the user's local
 
 ### Goal progress
 
-Goals track one or more measurable components in the persistence model. Each component contributes equally by default; optional weights must total 100%. Overall progress is derived from each component's capped completed-to-target ratio. The calculation service compares progress with linear expected progress over the goal's date range and estimates the remaining units per day. The API currently exposes progress percentages and completion, but does not yet expose the complete pace/status response on every goal query.
+Goals track one or more measurable components in the persistence model. Each component contributes equally by default; optional weights must total 100%. Overall progress is derived from each component's capped completed-to-target ratio. The calculation service compares progress with linear expected progress over the goal's date range and estimates the remaining units per day. Goal queries include pace/status calculations and remaining work per metric.
 
 ### Timezone
 
@@ -83,19 +84,22 @@ Passwords are hashed with bcryptjs. Access tokens expire after 15 minutes and re
 ## API routes
 
 - `POST /api/auth/register`, `/login`, `/refresh`, `/logout`; `GET /api/auth/me`
-- `GET/POST/PATCH/DELETE /api/categories`
+- `GET/POST/PATCH/DELETE /api/categories`; `POST /api/categories/:id/restore`
 - `GET/PUT /api/entries` (PUT upserts a user/category/local-date entry)
 - `GET/POST /api/goals`; `POST /api/goals/:id/progress`
+- `GET /api/stats` (up to 90 days by default; accepts `from`, `to`, and `categoryId`)
+- `GET /api/achievements` (catalog plus persisted unlock dates)
+- `GET /api/export?format=json|csv`
 - `GET /api/health`
 
 API handlers validate client input with Zod and scope records by authenticated user. Calculated values are derived from progress logs instead of treating a mutable total as the only history.
 
 ## Current limitations
 
-- Frontend screens are prototypes: most data is static or stored in local storage and is not synchronized with MongoDB.
-- History heatmap values are illustrative placeholders, not API-derived history.
-- Goal cards and achievement states are illustrative; goal creation/edit forms, pace API integration, and achievement unlocking are incomplete.
-- There is no seed command, daily journal persistence, data export/import, weekly review, search, or fully developed personal records.
+- Goal creation currently uses browser prompts; there is no full form for dates, weights, milestones, or multi-component editing after creation.
+- The daily journal is not yet persisted. Category note details are persisted.
+- Settings appearance selection and timezone editing are not yet saved to the account.
+- There is no seed command, data import, weekly review, history search, or fully developed personal records.
 - Integration tests, authentication tests, database-backed concurrency tests, and broad timezone boundary tests remain to be added.
 - No production deployment configuration or deployment walkthrough has been verified.
 
@@ -109,7 +113,7 @@ cp apps/api/.env.example apps/api/.env
 npm run dev
 ```
 
-The web app runs at `http://localhost:5173`; the API health endpoint is at `http://localhost:4000/api/health`. The API connects to the configured MongoDB URI before it begins listening and disconnects during graceful shutdown. A local MongoDB instance or hosted MongoDB URI is required to start the API.
+The web app runs at `http://localhost:5173` and proxies `/api` requests to Express at port 4000. The API health endpoint is at `http://localhost:4000/api/health`. The API connects to the configured MongoDB URI before it begins listening and disconnects during graceful shutdown. A local MongoDB instance or hosted MongoDB URI is required to start the API. Provide unique random JWT secrets of at least 32 characters in `apps/api/.env` before registering an account.
 
 ## Environment variables
 

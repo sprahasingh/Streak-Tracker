@@ -23,4 +23,8 @@ router.delete("/:id", async (request: AuthRequest, response) => {
   const category = await Category.findOneAndUpdate({ _id: request.params.id, userId: request.userId }, { $set: { archivedAt: new Date() } }, { new: true });
   return category ? response.json({ category }) : response.status(404).json({ error: { code: "NOT_FOUND", message: "Category not found." } });
 });
+router.post("/:id/restore", async (request: AuthRequest, response) => {
+  const category = await Category.findOneAndUpdate({ _id: request.params.id, userId: request.userId }, { $set: { archivedAt: null } }, { new: true });
+  return category ? response.json({ category }) : response.status(404).json({ error: { code: "NOT_FOUND", message: "Category not found." } });
+});
 export default router;

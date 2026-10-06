@@ -4,18 +4,22 @@ import { Goal } from "../models/goal.model.js";
 import { GoalProgressLog } from "../models/goal-progress-log.model.js";
 import { Category } from "../models/category.model.js";
 import { requireAuth, type AuthRequest } from "../middleware/auth.middleware.js";
-import { goalProgress } from "../services/goal.service.js";
+import { goalProgress, goalPace } from "../services/goal.service.js";
 import { LocalDateSchema } from "@consistency-tracker/shared";
+import { User } from "../models/user.model.js";
 
 const router = Router();
 router.use(requireAuth);
 const goalInput = z.object({ categoryId: z.string().min(1), title: z.string().trim().min(1).max(120), startDate: LocalDateSchema, targetDate: LocalDateSchema, metrics: z.array(z.object({ key: z.string().trim().min(1).max(40), label: z.string().trim().min(1).max(80), unit: z.string().trim().min(1).max(40), target: z.number().positive(), weight: z.number().min(0).max(100).nullable().optional() })).min(1), milestones: z.array(z.object({ percent: z.number().int().min(1).max(100), label: z.string().trim().min(1).max(120) })).optional() });
 router.get("/", async (request: AuthRequest, response) => {
-  const goals = await Goal.find({ userId: request.userId, status: { $ne: "archived" } }).sort({ targetDate: 1 });
+  const [goals,user] = await Promise.all([Goal.find({ userId: request.userId, status: { $ne: "archived" } }).sort({ targetDate: 1 }),User.findById(request.userId).select("timeZone")]);
+  const today = new Intl.DateTimeFormat("en-CA",{timeZone:user?.timeZone??"UTC",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
   const results = await Promise.all(goals.map(async goal => {
     const logs = await GoalProgressLog.find({ userId: request.userId, goalId: goal.id });
     const values = goal.metrics.map((metric: { id: string; target: number; weight?: number | null }) => ({ target: metric.target, weight: metric.weight, value: logs.reduce((sum, log) => sum + log.changes.filter((change: { metricId: { toString(): string }; amount: number }) => change.metricId.toString() === metric.id).reduce((n: number, change: { amount: number }) => n + change.amount, 0), 0) }));
-    return { goal, metrics: values, progress: goalProgress(values) };
+    const progress=goalProgress(values);
+    const pace=goalPace(new Date(`${goal.startDate}T00:00:00Z`),new Date(`${goal.targetDate}T00:00:00Z`),new Date(`${today}T00:00:00Z`),progress,values);
+    return { goal, metrics: values, progress, pace };
   }));
   return response.json({ goals: results });
 });

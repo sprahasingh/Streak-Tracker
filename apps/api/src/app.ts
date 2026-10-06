@@ -7,6 +7,9 @@ import authRoutes from "./routes/auth.routes.js";
 import categoryRoutes from "./routes/categories.routes.js";
 import entryRoutes from "./routes/entries.routes.js";
 import goalRoutes from "./routes/goals.routes.js";
+import statsRoutes from "./routes/stats.routes.js";
+import achievementRoutes from "./routes/achievements.routes.js";
+import exportRoutes from "./routes/export.routes.js";
 
 export function createApp() {
   const app = express();
@@ -20,6 +23,9 @@ export function createApp() {
   app.use("/api/categories", categoryRoutes);
   app.use("/api/entries", entryRoutes);
   app.use("/api/goals", goalRoutes);
+  app.use("/api/stats", statsRoutes);
+  app.use("/api/achievements", achievementRoutes);
+  app.use("/api/export", exportRoutes);
   app.get("/api/health", (_request, response) => response.status(200).json({ status: "ok" }));
   app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
     console.error(error);
